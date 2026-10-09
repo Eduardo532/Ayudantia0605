@@ -7,6 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  # Mantenemos esto igual, la acción de metadata se encargará de pasarlo a minúsculas
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -27,9 +28,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # NUEVO PASO: Extrae los metadatos y convierte el nombre a minúsculas automáticamente
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+
+      # PASO MODIFICADO: Usamos las etiquetas generadas por el paso anterior
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          # Aquí consumimos el output del paso de metadata (ya formateado a minúsculas)
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
